@@ -1,4 +1,4 @@
-# SRFI nnn: Title
+# SRFI nnn: Hyper Server
 
 by Firstname Lastname, Another Person, Third Person
 
@@ -8,8 +8,8 @@ Early Draft
 
 # Abstract
 
-??? abstract, preferably shorter than 200 words. Please outline the
-need for, and design of, the proposal.
+Simple web server that can be used as a backend application for a
+single-page-application.
 
 # Issues
 
@@ -38,9 +38,62 @@ GitHub's version of Markdown can make tables. For example:
 
 # Specification
 
-??? detailed specification. This should be detailed enough that a
-conforming implementation could be completely created from this
-description.
+## `(hyperserver-start port-number proc)`
+
+Start a HTTP server that listen on port `PORT-NUMBER` and that
+executes `PROC` on each incoming requests. `PROC` takes three
+arguments:
+
+- `method` is a symbol for the downcased HTTP method,
+
+- `path` is a list of the strings that makes the path of the requested
+  URI. That is the strings that are between slashes that is percent
+  decoded.
+
+- `json` is an object satisfying `eof-object?` when the request has no
+  body, or the scheme object such as returned by SRFI-180 procedure
+  `json-read`.
+
+`PROC` is expected to return two values or three values:
+
+1. The first value is always a number representing an HTTP code,
+
+2. The second value is possibly a bytevector or a scheme object that
+   can be written using SRFI-180 procedure `json-write`,
+
+3. If the second value is a bytevector, the third value must be a
+   string describing the mime type associated with the
+   bytevector. Otherwise, the third value if any is ignored.
+
+In the case where there is a request body and `json-read` raise a
+json-error, it must return a HTTP 400 (bad request) error.
+
+## `(hyperserver-serve-static filepath)`
+
+If `FILEPATH` points to a file that exists it returns three values:
+
+1. The HTTP code 200,
+
+2. The bytevector of the content of the file,
+
+3. A string denoting the mimetype of the file (possibly based on the
+   filename extension).
+
+# Example
+
+Simple echo server, that returns what it is posted on `/api/echo` or
+serve a static file found in `%static-root`:
+
+```scheme
+(define %static-root "/var/hyperserver/static/")
+
+(define (router method path json)
+  (match (cons method path)
+    ((POST "api" "echo") (values 200 json))
+    (_ (hyperserver-serve-static (string-join #\/ (cons %static-root path))))))
+
+(hyperserver-start 8000 router)
+```
 
 # Implementation
 
