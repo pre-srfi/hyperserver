@@ -50,6 +50,9 @@ arguments:
   URI. That is the strings that are between slashes that is percent
   decoded.
 
+- `params` the parsed query string as an association list of symbols
+  and strings.
+
 - `json` is an object satisfying `eof-object?` when the request has no
   body, or the scheme object such as returned by SRFI-180 procedure
   `json-read`.
@@ -61,12 +64,13 @@ arguments:
 2. The second value is possibly a bytevector or a scheme object that
    can be written using SRFI-180 procedure `json-write`,
 
-3. If the second value is a bytevector, the third value must be a
+3. If the second value is a binary port, the third value must be a
    string describing the mime type associated with the
    bytevector. Otherwise, the third value if any is ignored.
 
-In the case where there is a request body and `json-read` raise a
-json-error, it must return a HTTP 400 (bad request) error.
+In the case where there is a request body and `json-read` raise a an
+error that satisfy `json-error?`, it must return a HTTP 400 (bad
+request) error.
 
 ## `(hyperserver-serve-static filepath)`
 
@@ -74,7 +78,7 @@ If `FILEPATH` points to a file that exists it returns three values:
 
 1. The HTTP code 200,
 
-2. The bytevector of the content of the file,
+2. A binary port with the content of the file,
 
 3. A string denoting the mimetype of the file (possibly based on the
    filename extension).
@@ -87,10 +91,10 @@ serve a static file found in `%static-root`:
 ```scheme
 (define %static-root "/var/hyperserver/static/")
 
-(define (router method path json)
+(define (router method path params json)
   (match (cons method path)
     ((POST "api" "echo") (values 200 json))
-    (_ (hyperserver-serve-static (string-join #\/ (cons %static-root path))))))
+    (_ (hyperserver-serve-static (apply string-join #\/  %static-root path)))))
 
 (hyperserver-start 8000 router)
 ```
